@@ -1,0 +1,53 @@
+#cloud-config
+# JustAVPN - Hetzner Cloud Init
+# Paste this into "User Data" when creating a Hetzner server.
+# Replace YOUR_REPO_URL and optionally YOUR_API_TOKEN below.
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - git
+  - curl
+
+write_files:
+  - path: /opt/justavpn/setup.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      REPO_URL="${REPO_URL:-YOUR_REPO_URL}"
+      API_TOKEN="${API_TOKEN:-$(openssl rand -hex 32)}"
+
+      echo "[*] Installing Docker..."
+      curl -fsSL https://get.docker.com | sh
+      systemctl enable docker
+
+      echo "[*] Cloning JustAVPN..."
+      git clone "$REPO_URL" /opt/justavpn/repo
+      cd /opt/justavpn/repo/server
+
+      echo "[*] Configuring..."
+      PUBLIC_IP=$(curl -s https://ifconfig.me)
+      cat > .env << EOF
+      SERVER_PUBLIC_IP=$PUBLIC_IP
+      WG_PORT=51820
+      WG_SUBNET=10.66.66.0/24
+      API_TOKEN=$API_TOKEN
+      API_PORT=8443
+      EOF
+
+      echo "[*] Starting JustAVPN..."
+      docker compose up -d
+
+      # Write out the API token so you can retrieve it later
+      echo "$API_TOKEN" > /opt/justavpn/api_token.txt
+      chmod 600 /opt/justavpn/api_token.txt
+
+      echo "[*] Done! Server is running."
+      echo "[*] API Token saved to /opt/justavpn/api_token.txt"
+      echo "[*] Create peers with: docker exec justavpn /opt/justavpn/scripts/generate-peer.sh <name>"
+
+runcmd:
+  - bash /opt/justavpn/setup.sh 2>&1 | tee /var/log/justavpn-setup.log

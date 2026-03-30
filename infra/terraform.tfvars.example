@@ -1,0 +1,9 @@
+# Copy this to terraform.tfvars and fill in your values
+# DO NOT commit terraform.tfvars — it contains secrets
+
+hcloud_token        = "your-hetzner-api-token"
+repo_url            = "https://github.com/youruser/justavpn.git"
+admin_ip            = "YOUR_IP/32"  # curl ifconfig.me
+server_type         = "cx22"        # cx22=$4.35/mo, cx11=$3.79/mo
+location            = "fsn1"        # fsn1, nbg1, hel1, ash
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"

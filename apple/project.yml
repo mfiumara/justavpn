@@ -1,0 +1,57 @@
+name: JustAVPN
+options:
+  bundleIdPrefix: com.justavpn
+  deploymentTarget:
+    iOS: "16.0"
+    macOS: "13.0"
+  xcodeVersion: "15.0"
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: ""  # Set your team ID here
+    SWIFT_VERSION: "5.9"
+
+packages:
+  JustAVPNCore:
+    path: Packages/JustAVPNCore
+
+targets:
+  JustAVPNApp:
+    type: application
+    platform: [iOS, macOS]
+    sources: [JustAVPNApp]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.justavpn.app
+        INFOPLIST_FILE: JustAVPNApp/Info.plist
+        CODE_SIGN_ENTITLEMENTS: JustAVPNApp/JustAVPN.entitlements
+    dependencies:
+      - package: JustAVPNCore
+      - target: PacketTunnelExtension
+        embed: true
+    entitlements:
+      path: JustAVPNApp/JustAVPN.entitlements
+      properties:
+        com.apple.developer.networking.networkextension:
+          - packet-tunnel-provider
+        com.apple.security.application-groups:
+          - group.com.justavpn.shared
+
+  PacketTunnelExtension:
+    type: app-extension
+    platform: [iOS, macOS]
+    sources: [PacketTunnelExtension]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.justavpn.app.tunnel
+        INFOPLIST_FILE: PacketTunnelExtension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: PacketTunnelExtension/PacketTunnelExtension.entitlements
+    dependencies:
+      - package: JustAVPNCore
+    entitlements:
+      path: PacketTunnelExtension/PacketTunnelExtension.entitlements
+      properties:
+        com.apple.developer.networking.networkextension:
+          - packet-tunnel-provider
+        com.apple.security.application-groups:
+          - group.com.justavpn.shared

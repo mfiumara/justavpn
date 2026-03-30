@@ -1,0 +1,51 @@
+# Server
+server/configs/*
+!server/configs/.gitkeep
+.env
+
+# Go
+server/api/api
+server/api/bin/
+
+# Apple
+apple/*.xcodeproj
+apple/*.xcworkspace/xcuserdata
+apple/build/
+apple/DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.swp
+*~.nib
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+
+# macOS
+.DS_Store
+
+# OpenTofu / Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/*.tfvars
+infra/.terraform.lock.hcl
+
+# Keys - never commit
+*.key
+*.pem
