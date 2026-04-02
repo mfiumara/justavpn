@@ -7,7 +7,7 @@ set -euo pipefail
 #   API_TOKEN   - bearer token for the management API (required)
 #   SERVER_HOST - VPN server IP (default: 91.98.139.162)
 
-SERVER_HOST="${SERVER_HOST:-91.98.139.162}"
+SERVER_HOST="${SERVER_HOST:-}"
 API_BASE="http://${SERVER_HOST}:8443/api/v1"
 
 PASS=0
@@ -41,6 +41,10 @@ check_deps() {
     fi
     if [ -z "${API_TOKEN:-}" ]; then
         echo "Error: API_TOKEN environment variable is required"
+        exit 1
+    fi
+    if [ -z "${SERVER_HOST:-}" ]; then
+        echo "Error: SERVER_HOST environment variable is required"
         exit 1
     fi
 }
