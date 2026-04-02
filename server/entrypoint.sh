@@ -33,9 +33,11 @@ PrivateKey = $SERVER_PRIVATE_KEY
 PostUp = iptables -t nat -A POSTROUTING -s $WG_SUBNET -o $DEFAULT_IFACE -j MASQUERADE
 PostUp = iptables -A FORWARD -i %i -j ACCEPT
 PostUp = iptables -A FORWARD -o %i -j ACCEPT
+PostUp = iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 PostDown = iptables -t nat -D POSTROUTING -s $WG_SUBNET -o $DEFAULT_IFACE -j MASQUERADE
 PostDown = iptables -D FORWARD -i %i -j ACCEPT
 PostDown = iptables -D FORWARD -o %i -j ACCEPT
+PostDown = iptables -t mangle -D FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 EOF
     chmod 600 "$WG_DIR/$WG_INTERFACE.conf"
 
