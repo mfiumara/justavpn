@@ -1,0 +1,30 @@
+name: VPN Integration Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  vpn-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install WireGuard
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y wireguard-tools jq
+
+      - name: Run VPN integration tests
+        env:
+          API_TOKEN: ${{ secrets.VPN_API_TOKEN }}
+          SERVER_HOST: ${{ secrets.VPN_SERVER_HOST }}
+        run: |
+          chmod +x tests/run_tests.sh
+          tests/run_tests.sh
