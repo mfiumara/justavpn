@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+func formatEndpoint(ip, port string) string {
+	if strings.Contains(ip, ":") {
+		return "[" + ip + "]:" + port
+	}
+	return ip + ":" + port
+}
+
 type ServerEnv struct {
 	PublicIP  string
 	PublicKey string
@@ -100,7 +107,7 @@ func GetStatus(configDir string) (*ServerStatus, error) {
 	return &ServerStatus{
 		PublicKey:   env.PublicKey,
 		ListenPort: env.Port,
-		Endpoint:   env.PublicIP + ":" + env.Port,
+		Endpoint:   formatEndpoint(env.PublicIP, env.Port),
 		PeerCount:  len(peers),
 		Interface:  "wg0",
 	}, nil
@@ -203,10 +210,10 @@ DNS = %s
 [Peer]
 PublicKey = %s
 PresharedKey = %s
-Endpoint = %s:%s
+Endpoint = %s
 AllowedIPs = 0.0.0.0/0, ::/0
 PersistentKeepalive = 25
-`, privKey, peerIP, dns, env.PublicKey, psk, env.PublicIP, env.Port)
+`, privKey, peerIP, dns, env.PublicKey, psk, formatEndpoint(env.PublicIP, env.Port))
 
 	os.WriteFile(peersDir+"/"+name+".conf", []byte(clientConf), 0600)
 
@@ -225,6 +232,18 @@ PersistentKeepalive = 25
 		Created:   time.Now().UTC().Format(time.RFC3339),
 	}
 	return info, clientConf, nil
+}
+
+func GetPeerConfig(configDir, name string) (string, error) {
+	confPath := configDir + "/peers/" + name + "/" + name + ".conf"
+	data, err := os.ReadFile(confPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("peer '%s' not found", name)
+		}
+		return "", err
+	}
+	return string(data), nil
 }
 
 func DeletePeer(configDir, publicKey string) error {

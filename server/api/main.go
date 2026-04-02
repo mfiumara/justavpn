@@ -27,6 +27,7 @@ func main() {
 	mux.HandleFunc("GET /api/v1/status", h.GetStatus)
 	mux.HandleFunc("GET /api/v1/peers", h.ListPeers)
 	mux.HandleFunc("POST /api/v1/peers", h.CreatePeer)
+	mux.HandleFunc("GET /api/v1/peers/{name}/config", h.GetPeerConfig)
 	mux.HandleFunc("DELETE /api/v1/peers/{publicKey}", h.DeletePeer)
 
 	authed := auth.TokenMiddleware(token, mux)

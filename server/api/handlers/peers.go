@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/justavpn/server-api/wireguard"
 )
@@ -55,6 +56,27 @@ func (h *Handler) CreatePeer(w http.ResponseWriter, r *http.Request) {
 		Peer:       *peer,
 		ClientConf: clientConf,
 	})
+}
+
+func (h *Handler) GetPeerConfig(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if name == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	conf, err := wireguard.GetPeerConfig(h.configDir, name)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, http.StatusNotFound, err.Error())
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`.conf"`)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(conf))
 }
 
 func (h *Handler) DeletePeer(w http.ResponseWriter, r *http.Request) {
