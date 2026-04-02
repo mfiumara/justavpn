@@ -70,7 +70,7 @@ locals {
           cd /opt/justavpn/repo/server
 
           echo "[*] Configuring..."
-          PUBLIC_IP=$(curl -s https://ifconfig.me)
+          PUBLIC_IP=$(curl -s -4 https://ifconfig.me)
           cat > .env << EOF
           SERVER_PUBLIC_IP=$PUBLIC_IP
           WG_PORT=${var.wg_port}
