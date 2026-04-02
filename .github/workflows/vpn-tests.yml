@@ -19,7 +19,7 @@ jobs:
       - name: Install WireGuard
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y wireguard-tools jq
+          sudo apt-get install -y wireguard-tools openresolv jq
 
       - name: Run VPN integration tests
         env:

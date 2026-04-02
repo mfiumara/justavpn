@@ -62,6 +62,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# $1 = api peer name, $2 = local config path (basename must be ≤15 chars for interface name)
 create_peer() {
     local name="$1"
     local conf_path="$2"
@@ -73,17 +74,29 @@ create_peer() {
         -d "{\"name\": \"$name\"}" \
         "$API_BASE/peers")
 
-    echo "$response" | jq -r '.clientConfig' > "$conf_path"
+    jq -r '.clientConfig' <<< "$response" > "$conf_path"
     chmod 600 "$conf_path"
-    echo "$response" | jq -r '.peer.publicKey'
+    jq -r '.peer.publicKey' <<< "$response"
 }
 
-ping_host() {
-    local host="$1"
+debug_iface() {
+    local iface
+    iface=$(basename "$1" .conf)
+    echo "  --- wg show $iface ---"
+    sudo wg show "$iface" 2>/dev/null || echo "  (not found)"
+    echo "  --- ip addr show $iface ---"
+    ip addr show "$iface" 2>/dev/null || echo "  (not found)"
+    echo "  --- ip route show dev $iface ---"
+    ip route show dev "$iface" 2>/dev/null || echo "  (none)"
+}
+
+# Cross-platform ping: $1 = count, $2 = timeout (secs), $3 = host
+do_ping() {
+    local count="$1" timeout="$2" host="$3"
     if [[ "$(uname -s)" == "Darwin" ]]; then
-        ping -c 4 -t 10 "$host"
+        ping -c "$count" -t "$timeout" "$host"
     else
-        ping -c 4 -W 10 "$host"
+        ping -c "$count" -W "$timeout" "$host"
     fi
 }
 
@@ -104,22 +117,33 @@ run_test() {
 
 # ── tests ─────────────────────────────────────────────────────────────────────
 
+# Test 1: connect and disconnect
 test_connect_disconnect() {
-    local peer_name="test-connect-$$"
-    CLEANUP_CONF="/tmp/${peer_name}.conf"
+    # Interface names must be ≤15 chars. wgc-<pid> = max 11 chars.
+    # API peer name can be longer (server-side only).
+    local iface="wgc-$$"
+    local api_name="ci-connect-$$"
+    CLEANUP_CONF="/tmp/${iface}.conf"
 
-    log "Creating peer '$peer_name'..."
-    CLEANUP_PUBKEY=$(create_peer "$peer_name" "$CLEANUP_CONF")
+    log "Creating peer '$api_name'..."
+    CLEANUP_PUBKEY=$(create_peer "$api_name" "$CLEANUP_CONF")
     pass "Peer created (pubkey: ${CLEANUP_PUBKEY:0:16}...)"
 
-    log "Connecting to VPN..."
+    log "Config:"
+    cat "$CLEANUP_CONF"
+
+    log "Connecting..."
     sudo wg-quick up "$CLEANUP_CONF"
     CLEANUP_WG_UP=true
-    pass "WireGuard interface is up"
+    sleep 2
 
-    log "Verifying interface..."
-    sudo wg show | grep -q "peer" || { fail "No peers visible in wg show"; return 1; }
-    pass "Peer handshake visible"
+    log "Verifying WireGuard interface..."
+    if ! sudo wg show "$iface" 2>/dev/null | grep -q "peer"; then
+        fail "Peer not visible in wg show"
+        debug_iface "$CLEANUP_CONF"
+        return 1
+    fi
+    pass "WireGuard tunnel is up with peer"
 
     log "Disconnecting..."
     sudo wg-quick down "$CLEANUP_CONF"
@@ -130,22 +154,33 @@ test_connect_disconnect() {
     return 0
 }
 
+# Test 2: connect, ping google.nl, disconnect
 test_connect_ping_disconnect() {
-    local peer_name="test-ping-$$"
-    CLEANUP_CONF="/tmp/${peer_name}.conf"
+    local iface="wgp-$$"
+    local api_name="ci-ping-$$"
+    CLEANUP_CONF="/tmp/${iface}.conf"
 
-    log "Creating peer '$peer_name'..."
-    CLEANUP_PUBKEY=$(create_peer "$peer_name" "$CLEANUP_CONF")
+    log "Creating peer '$api_name'..."
+    CLEANUP_PUBKEY=$(create_peer "$api_name" "$CLEANUP_CONF")
     pass "Peer created (pubkey: ${CLEANUP_PUBKEY:0:16}...)"
 
-    log "Connecting to VPN..."
+    log "Connecting..."
     sudo wg-quick up "$CLEANUP_CONF"
     CLEANUP_WG_UP=true
-    pass "WireGuard interface is up"
+    sleep 2
+
+    log "Verifying tunnel (ping VPN gateway at 10.66.66.1)..."
+    if ! do_ping 2 5 10.66.66.1; then
+        fail "Cannot reach VPN gateway — tunnel may not be routing"
+        debug_iface "$CLEANUP_CONF"
+        return 1
+    fi
+    pass "VPN gateway reachable (10.66.66.1)"
 
     log "Pinging google.nl..."
-    if ! ping_host google.nl; then
+    if ! do_ping 4 5 google.nl; then
         fail "Ping to google.nl failed"
+        debug_iface "$CLEANUP_CONF"
         return 1
     fi
     pass "Ping to google.nl succeeded"
