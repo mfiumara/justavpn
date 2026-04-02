@@ -99,10 +99,13 @@ create_peer() {
     # Routing still works without it — DNS queries go through the tunnel via AllowedIPs=0.0.0.0/0.
     sed -i '/^DNS/d' "$conf_path"
     # The server may advertise an IPv6 endpoint (from ifconfig.me returning IPv6).
-    # Force the endpoint to the IPv4 address we used to reach the API.
+    # GitHub Actions runners lack IPv6, so force the IPv4 address.
+    # Port: extract from whatever the server returned (last colon-delimited segment).
     local wg_port
-    wg_port=$(grep -oP 'Endpoint = [^:]+:\K\d+' "$conf_path" || echo "51820")
+    wg_port=$(awk '/^Endpoint/{n=split($3,a,":"); print a[n]; exit}' "$conf_path")
+    wg_port=${wg_port:-51820}
     sed -i "s|^Endpoint = .*|Endpoint = ${SERVER_HOST}:${wg_port}|" "$conf_path"
+    log "Endpoint forced to ${SERVER_HOST}:${wg_port}"
     chmod 600 "$conf_path"
     log "Config ($(wc -c < "$conf_path") bytes):"
     cat "$conf_path" >&2
