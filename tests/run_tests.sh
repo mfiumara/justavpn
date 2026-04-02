@@ -115,6 +115,24 @@ debug_iface() {
     ip route show dev "$iface" 2>/dev/null || echo "  (none)"
 }
 
+# Bring up WireGuard interface and ensure IP address is assigned.
+# On some kernels wg-quick runs `ip addr add` before `ip link set up`, which
+# causes "RTNETLINK: Network is unreachable". wg-quick ignores the error and
+# continues, leaving the interface with no IPv4 address. We detect and fix this.
+wg_up() {
+    local conf="$1"
+    local iface
+    iface=$(basename "$conf" .conf)
+    sudo wg-quick up "$conf"
+    local addr
+    addr=$(awk '/^Address[[:space:]]*=/{print $3}' "$conf")
+    if [[ -n "$addr" ]] && ! ip -4 addr show dev "$iface" 2>/dev/null | grep -q "inet "; then
+        log "wg-quick missed IP assignment — adding $addr manually"
+        sudo ip -4 addr add "$addr" dev "$iface"
+    fi
+    sleep 2
+}
+
 # Cross-platform ping: $1 = count, $2 = timeout (secs), $3 = host
 do_ping() {
     local count="$1" timeout="$2" host="$3"
@@ -158,9 +176,8 @@ test_connect_disconnect() {
     cat "$CLEANUP_CONF"
 
     log "Connecting..."
-    sudo wg-quick up "$CLEANUP_CONF" || { fail "wg-quick up failed"; debug_iface "$CLEANUP_CONF"; return 1; }
+    wg_up "$CLEANUP_CONF" || { fail "wg-quick up failed"; debug_iface "$CLEANUP_CONF"; return 1; }
     CLEANUP_WG_UP=true
-    sleep 2
 
     log "Verifying WireGuard interface..."
     if ! sudo wg show "$iface" 2>/dev/null | grep -q "peer"; then
@@ -190,9 +207,8 @@ test_connect_ping_disconnect() {
     pass "Peer created (pubkey: ${CLEANUP_PUBKEY:0:16}...)"
 
     log "Connecting..."
-    sudo wg-quick up "$CLEANUP_CONF" || { fail "wg-quick up failed"; debug_iface "$CLEANUP_CONF"; return 1; }
+    wg_up "$CLEANUP_CONF" || { fail "wg-quick up failed"; debug_iface "$CLEANUP_CONF"; return 1; }
     CLEANUP_WG_UP=true
-    sleep 2
 
     log "Verifying tunnel (ping VPN gateway at 10.66.66.1)..."
     if ! do_ping 2 5 10.66.66.1; then
