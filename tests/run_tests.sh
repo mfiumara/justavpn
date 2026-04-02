@@ -68,14 +68,20 @@ create_peer() {
     local name="$1"
     local conf_path="$2"
 
-    local response
-    response=$(curl -sf \
+    # Save response to temp file to avoid shell variable encoding issues
+    local tmp_resp="/tmp/api_resp_$$.json"
+    curl -sf \
         -H "Authorization: Bearer $API_TOKEN" \
         -H "Content-Type: application/json" \
         -d "{\"name\": \"$name\"}" \
-        "$API_BASE/peers")
+        "$API_BASE/peers" > "$tmp_resp"
 
-    echo "$response" | jq -r '.clientConfig' > "$conf_path"
+    log "Response size: $(wc -c < "$tmp_resp") bytes"
+    log "Raw response:" >&2
+    cat "$tmp_resp" >&2
+    echo >&2
+
+    jq -r '.clientConfig' "$tmp_resp" > "$conf_path"
     # Strip DNS line: wg-quick's DNS setup fails on CI runners (no resolvconf/systemd-resolved)
     # which causes it to exit before adding the IP address and routes.
     # Routing still works without it — DNS queries go through the tunnel via AllowedIPs=0.0.0.0/0.
@@ -84,7 +90,10 @@ create_peer() {
     log "Config ($(wc -c < "$conf_path") bytes):"
     cat "$conf_path" >&2
 
-    echo "$response" | jq -r '.peer.publicKey'
+    local pub_key
+    pub_key=$(jq -r '.peer.publicKey' "$tmp_resp")
+    rm -f "$tmp_resp"
+    echo "$pub_key"
 }
 
 debug_iface() {
