@@ -68,18 +68,26 @@ create_peer() {
     local name="$1"
     local conf_path="$2"
 
-    # Save response to temp file to avoid shell variable encoding issues
+    # Save response to temp file; capture HTTP status separately so we can
+    # always see the body even on error (curl -f suppresses it on 4xx/5xx)
     local tmp_resp="/tmp/api_resp_$$.json"
-    curl -sf \
+    local http_code
+    http_code=$(curl -s \
         -H "Authorization: Bearer $API_TOKEN" \
         -H "Content-Type: application/json" \
         -d "{\"name\": \"$name\"}" \
-        "$API_BASE/peers" > "$tmp_resp"
+        -o "$tmp_resp" \
+        -w "%{http_code}" \
+        "$API_BASE/peers")
 
-    log "Response size: $(wc -c < "$tmp_resp") bytes"
-    log "Raw response:" >&2
+    log "HTTP status: $http_code  |  response size: $(wc -c < "$tmp_resp") bytes"
     cat "$tmp_resp" >&2
     echo >&2
+
+    if [[ "$http_code" != "201" ]]; then
+        log "API error: expected 201, got $http_code"
+        return 1
+    fi
 
     jq -r '.clientConfig' "$tmp_resp" > "$conf_path"
     # Strip DNS line: wg-quick's DNS setup fails on CI runners (no resolvconf/systemd-resolved)
