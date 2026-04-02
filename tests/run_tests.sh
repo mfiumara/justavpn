@@ -25,9 +25,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-log()  { echo "  $*"; }
-pass() { echo -e "  ${GREEN}✓${NC} $*"; }
-fail() { echo -e "  ${RED}✗${NC} $*"; }
+# Always write to stderr so these are never captured by $() in create_peer
+log()  { echo "  $*" >&2; }
+pass() { echo -e "  ${GREEN}✓${NC} $*" >&2; }
+fail() { echo -e "  ${RED}✗${NC} $*" >&2; }
 
 check_deps() {
     local missing=()
@@ -74,12 +75,14 @@ create_peer() {
         -d "{\"name\": \"$name\"}" \
         "$API_BASE/peers")
 
-    log "API response keys: $(echo "$response" | jq -r 'keys | join(", ")')"
-    log "clientConfig length: $(echo "$response" | jq -r '.clientConfig | length')"
-
     echo "$response" | jq -r '.clientConfig' > "$conf_path"
+    # Strip DNS line: wg-quick's DNS setup fails on CI runners (no resolvconf/systemd-resolved)
+    # which causes it to exit before adding the IP address and routes.
+    # Routing still works without it — DNS queries go through the tunnel via AllowedIPs=0.0.0.0/0.
+    sed -i '/^DNS/d' "$conf_path"
     chmod 600 "$conf_path"
-    log "Config file size: $(wc -c < "$conf_path") bytes"
+    log "Config ($(wc -c < "$conf_path") bytes):"
+    cat "$conf_path" >&2
 
     echo "$response" | jq -r '.peer.publicKey'
 }
@@ -138,7 +141,7 @@ test_connect_disconnect() {
     cat "$CLEANUP_CONF"
 
     log "Connecting..."
-    sudo wg-quick up "$CLEANUP_CONF"
+    sudo wg-quick up "$CLEANUP_CONF" || { fail "wg-quick up failed"; debug_iface "$CLEANUP_CONF"; return 1; }
     CLEANUP_WG_UP=true
     sleep 2
 
@@ -170,7 +173,7 @@ test_connect_ping_disconnect() {
     pass "Peer created (pubkey: ${CLEANUP_PUBKEY:0:16}...)"
 
     log "Connecting..."
-    sudo wg-quick up "$CLEANUP_CONF"
+    sudo wg-quick up "$CLEANUP_CONF" || { fail "wg-quick up failed"; debug_iface "$CLEANUP_CONF"; return 1; }
     CLEANUP_WG_UP=true
     sleep 2
 
