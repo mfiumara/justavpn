@@ -5,10 +5,6 @@ WG_INTERFACE="wg0"
 WG_DIR="/etc/wireguard"
 CONFIG_DIR="/opt/justavpn/configs"
 
-# Enable IP forwarding
-sysctl -w net.ipv4.ip_forward=1
-sysctl -w net.ipv6.conf.all.forwarding=1
-
 # First run: generate server config
 if [ ! -f "$WG_DIR/$WG_INTERFACE.conf" ]; then
     echo "[*] First run - initializing WireGuard server..."
