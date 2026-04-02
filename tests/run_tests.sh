@@ -51,9 +51,13 @@ cleanup() {
         CLEANUP_WG_UP=false
     fi
     if [ -n "$CLEANUP_PUBKEY" ]; then
+        # URL-encode the public key: base64 keys contain / and + which break URL paths
+        local encoded_key
+        encoded_key=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$CLEANUP_PUBKEY" 2>/dev/null \
+            || echo "$CLEANUP_PUBKEY" | sed 's|+|%2B|g; s|/|%2F|g; s|=|%3D|g')
         curl -sf -X DELETE \
             -H "Authorization: Bearer $API_TOKEN" \
-            "$API_BASE/peers/$CLEANUP_PUBKEY" >/dev/null 2>&1 || true
+            "$API_BASE/peers/$encoded_key" >/dev/null 2>&1 || true
         CLEANUP_PUBKEY=""
     fi
     if [ -n "$CLEANUP_CONF" ]; then
@@ -163,9 +167,9 @@ run_test() {
 # Test 1: connect and disconnect
 test_connect_disconnect() {
     # Interface names must be ≤15 chars. wgc-<pid> = max 11 chars.
-    # API peer name can be longer (server-side only).
+    # API peer names use a random suffix to avoid server-side collisions across runs.
     local iface="wgc-$$"
-    local api_name="ci-connect-$$"
+    local api_name="ci-c-$(openssl rand -hex 4)"
     CLEANUP_CONF="/tmp/${iface}.conf"
 
     log "Creating peer '$api_name'..."
@@ -199,7 +203,7 @@ test_connect_disconnect() {
 # Test 2: connect, ping google.nl, disconnect
 test_connect_ping_disconnect() {
     local iface="wgp-$$"
-    local api_name="ci-ping-$$"
+    local api_name="ci-p-$(openssl rand -hex 4)"
     CLEANUP_CONF="/tmp/${iface}.conf"
 
     log "Creating peer '$api_name'..."
