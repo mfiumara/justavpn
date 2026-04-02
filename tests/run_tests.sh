@@ -98,6 +98,11 @@ create_peer() {
     # which causes it to exit before adding the IP address and routes.
     # Routing still works without it — DNS queries go through the tunnel via AllowedIPs=0.0.0.0/0.
     sed -i '/^DNS/d' "$conf_path"
+    # The server may advertise an IPv6 endpoint (from ifconfig.me returning IPv6).
+    # Force the endpoint to the IPv4 address we used to reach the API.
+    local wg_port
+    wg_port=$(grep -oP 'Endpoint = [^:]+:\K\d+' "$conf_path" || echo "51820")
+    sed -i "s|^Endpoint = .*|Endpoint = ${SERVER_HOST}:${wg_port}|" "$conf_path"
     chmod 600 "$conf_path"
     log "Config ($(wc -c < "$conf_path") bytes):"
     cat "$conf_path" >&2
