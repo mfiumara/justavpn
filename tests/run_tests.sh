@@ -84,12 +84,8 @@ create_peer() {
         -w "%{http_code}" \
         "$API_BASE/peers")
 
-    log "HTTP status: $http_code  |  response size: $(wc -c < "$tmp_resp") bytes"
-    cat "$tmp_resp" >&2
-    echo >&2
-
     if [[ "$http_code" != "201" ]]; then
-        log "API error: expected 201, got $http_code"
+        log "API error: expected 201, got $http_code — $(cat "$tmp_resp")"
         return 1
     fi
 
@@ -105,10 +101,8 @@ create_peer() {
     wg_port=$(awk '/^Endpoint/{n=split($3,a,":"); print a[n]; exit}' "$conf_path")
     wg_port=${wg_port:-51820}
     sed -i "s|^Endpoint = .*|Endpoint = ${SERVER_HOST}:${wg_port}|" "$conf_path"
-    log "Endpoint forced to ${SERVER_HOST}:${wg_port}"
+    log "Endpoint: ${SERVER_HOST}:${wg_port}"
     chmod 600 "$conf_path"
-    log "Config ($(wc -c < "$conf_path") bytes):"
-    cat "$conf_path" >&2
 
     local pub_key
     pub_key=$(jq -r '.peer.publicKey' "$tmp_resp")
@@ -183,9 +177,6 @@ test_connect_disconnect() {
     log "Creating peer '$api_name'..."
     CLEANUP_PUBKEY=$(create_peer "$api_name" "$CLEANUP_CONF")
     pass "Peer created (pubkey: ${CLEANUP_PUBKEY:0:16}...)"
-
-    log "Config:"
-    cat "$CLEANUP_CONF"
 
     log "Connecting..."
     wg_up "$CLEANUP_CONF" || { fail "wg-quick up failed"; debug_iface "$CLEANUP_CONF"; return 1; }
