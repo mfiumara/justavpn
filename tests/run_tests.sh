@@ -74,9 +74,14 @@ create_peer() {
         -d "{\"name\": \"$name\"}" \
         "$API_BASE/peers")
 
-    jq -r '.clientConfig' <<< "$response" > "$conf_path"
+    log "API response keys: $(echo "$response" | jq -r 'keys | join(", ")')"
+    log "clientConfig length: $(echo "$response" | jq -r '.clientConfig | length')"
+
+    echo "$response" | jq -r '.clientConfig' > "$conf_path"
     chmod 600 "$conf_path"
-    jq -r '.peer.publicKey' <<< "$response"
+    log "Config file size: $(wc -c < "$conf_path") bytes"
+
+    echo "$response" | jq -r '.peer.publicKey'
 }
 
 debug_iface() {
