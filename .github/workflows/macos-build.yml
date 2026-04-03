@@ -23,10 +23,6 @@ jobs:
         working-directory: apple
         run: xcodegen generate
 
-      - name: Resolve Swift packages
-        working-directory: apple
-        run: xcodebuild -resolvePackageDependencies -project JustAVPN.xcodeproj -scheme JustAVPNApp_macOS
-
       - name: Run JustAVPNCore tests
         working-directory: apple/Packages/JustAVPNCore
         run: swift test
