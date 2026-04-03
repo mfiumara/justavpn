@@ -82,8 +82,8 @@ public final class TunnelManager: ObservableObject {
 
         pauseTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(duration.rawValue) * 1_000_000_000)
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
+            guard !Task.isCancelled, let self else { return }
+            await MainActor.run { [weak self] in
                 self?.connect()
             }
         }
