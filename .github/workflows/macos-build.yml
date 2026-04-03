@@ -8,10 +8,13 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -22,7 +25,7 @@ jobs:
 
       - name: Resolve Swift packages
         working-directory: apple
-        run: xcodebuild -resolvePackageDependencies -project JustAVPN.xcodeproj -scheme JustAVPNApp
+        run: xcodebuild -resolvePackageDependencies -project JustAVPN.xcodeproj -scheme JustAVPNApp_macOS
 
       - name: Run JustAVPNCore tests
         working-directory: apple/Packages/JustAVPNCore
@@ -33,7 +36,7 @@ jobs:
         run: |
           xcodebuild build \
             -project JustAVPN.xcodeproj \
-            -scheme JustAVPNApp \
+            -scheme JustAVPNApp_macOS \
             -destination 'platform=macOS' \
             -configuration Release \
             CODE_SIGN_IDENTITY=- \
