@@ -1,0 +1,60 @@
+name: macOS Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: apple
+        run: xcodegen generate
+
+      - name: Resolve Swift packages
+        working-directory: apple
+        run: xcodebuild -resolvePackageDependencies -project JustAVPN.xcodeproj -scheme JustAVPNApp
+
+      - name: Run JustAVPNCore tests
+        working-directory: apple/Packages/JustAVPNCore
+        run: swift test
+
+      - name: Build macOS app
+        working-directory: apple
+        run: |
+          xcodebuild build \
+            -project JustAVPN.xcodeproj \
+            -scheme JustAVPNApp \
+            -destination 'platform=macOS' \
+            -configuration Release \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM= \
+            -derivedDataPath build
+
+      - name: Package app bundle
+        working-directory: apple
+        run: |
+          APP_PATH=$(find build/Build/Products/Release -name "JustAVPN*.app" -maxdepth 1 | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "App bundle not found"
+            exit 1
+          fi
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" JustAVPN-macOS.zip
+
+      - name: Upload macOS app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: JustAVPN-macOS
+          path: apple/JustAVPN-macOS.zip
+          retention-days: 14

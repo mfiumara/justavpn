@@ -21,5 +21,9 @@ let package = Package(
                 .product(name: "WireGuardKit", package: "wireguard-apple"),
             ]
         ),
+        .testTarget(
+            name: "JustAVPNCoreTests",
+            dependencies: ["JustAVPNCore"]
+        ),
     ]
 )
