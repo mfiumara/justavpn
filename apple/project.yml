@@ -14,6 +14,9 @@ settings:
 packages:
   JustAVPNCore:
     path: Packages/JustAVPNCore
+  wireguard-apple:
+    url: https://github.com/WireGuard/wireguard-apple.git
+    from: "1.0.15-26"
 
 targets:
   JustAVPNApp:
@@ -52,6 +55,8 @@ targets:
         CODE_SIGN_ENTITLEMENTS: PacketTunnelExtension/PacketTunnelExtension.entitlements
     dependencies:
       - package: JustAVPNCore
+      - package: wireguard-apple
+        product: WireGuardKit
     entitlements:
       path: PacketTunnelExtension/PacketTunnelExtension.entitlements
       properties:

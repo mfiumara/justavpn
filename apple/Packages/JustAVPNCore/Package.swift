@@ -11,15 +11,11 @@ let package = Package(
     products: [
         .library(name: "JustAVPNCore", targets: ["JustAVPNCore"]),
     ],
-    dependencies: [
-        .package(url: "https://github.com/WireGuard/wireguard-apple.git", from: "1.0.15-26"),
-    ],
+    dependencies: [],
     targets: [
         .target(
             name: "JustAVPNCore",
-            dependencies: [
-                .product(name: "WireGuardKit", package: "wireguard-apple"),
-            ]
+            dependencies: []
         ),
         .testTarget(
             name: "JustAVPNCoreTests",
