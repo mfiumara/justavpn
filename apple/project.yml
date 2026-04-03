@@ -27,7 +27,11 @@ targets:
         CODE_SIGN_ENTITLEMENTS: JustAVPNApp/JustAVPN.entitlements
     dependencies:
       - package: JustAVPNCore
-      - target: PacketTunnelExtension
+      - target: PacketTunnelExtension_iOS
+        platformFilter: ios
+        embed: true
+      - target: PacketTunnelExtension_macOS
+        platformFilter: macos
         embed: true
     entitlements:
       path: JustAVPNApp/JustAVPN.entitlements
